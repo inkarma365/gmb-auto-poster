@@ -115,11 +115,11 @@ pub async fn open_and_check(d: &Driver<'_>, cfg: &Config, flow: &Flow) -> Result
         warn!("sessione scaduta: reindirizzato a {url}");
         return Ok(false);
     }
-    if let Some(t) = &flow.session.logged_in {
-        if d.wait_for(t, None).await.is_err() {
-            warn!("sessione: elemento di controllo non trovato su {url}");
-            return Ok(false);
-        }
+    if let Some(t) = &flow.session.logged_in
+        && d.wait_for(t, None).await.is_err()
+    {
+        warn!("sessione: elemento di controllo non trovato su {url}");
+        return Ok(false);
     }
     info!("sessione valida ({url})");
     Ok(true)

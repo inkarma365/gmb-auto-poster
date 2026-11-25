@@ -183,11 +183,12 @@ async fn post(cfg: &Config, dry_run: bool, force: bool, keep_open: bool) -> Resu
     let flow = Flow::load(&cfg.flow_file)?;
     let mut st = State::load(&cfg.state_file)?;
 
-    if !dry_run && !force {
-        if let Gate::Skip(why) = st.gate(&cfg.limits) {
-            info!("nessuna pubblicazione: {why}");
-            return Ok(ExitCode::SUCCESS);
-        }
+    if !dry_run
+        && !force
+        && let Gate::Skip(why) = st.gate(&cfg.limits)
+    {
+        info!("nessuna pubblicazione: {why}");
+        return Ok(ExitCode::SUCCESS);
     }
 
     let Some(dir) = queue::next_dir(&cfg.posts_dir)? else {
