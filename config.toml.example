@@ -1,0 +1,40 @@
+# Copia in config.toml e personalizza.
+
+# Pannello della scheda. Con un solo profilo, business.google.com/locations reindirizza
+# al pannello nella Ricerca Google. Se hai più schede, apri quella giusta da browser
+# e incolla qui l'URL.
+business_url = "https://business.google.com/locations"
+
+# Pagina aperta prima della scheda, come farebbe una persona (commenta per saltarla).
+warmup_url = "https://www.google.com/"
+
+chromium_path = "/usr/bin/chromium"
+profile_dir = "chrome-profile"   # sessione persistente (contiene i cookie: non condividerla)
+posts_dir = "posts"
+flow_file = "flow.toml"
+screenshots_dir = "screenshots"
+state_file = "state.json"
+
+# Sconsigliato: Chromium headless è il segnale di automazione più facile da riconoscere.
+headless = false
+window = [1440, 900]
+lang = "it-IT"
+
+[copy]
+# Usato quando una cartella non contiene post.txt
+# default_text = "Vieni a trovarci!"
+# Aggiunto in fondo a ogni post
+# footer = "📞 Chiamaci o scrivici per info"
+
+[limits]
+max_posts_per_day = 1
+max_attempts_per_day = 2
+min_minutes_between_attempts = 30
+max_failures_per_post = 3
+
+[human]
+# Intervalli [min, max] in millisecondi, estratti a caso ogni volta.
+step_delay_ms = [1200, 3500]
+page_settle_ms = [2500, 6000]
+type_delay_ms = [45, 170]
+element_timeout_s = 30

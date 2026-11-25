@@ -1,0 +1,10 @@
+/target
+/chrome-profile
+/screenshots
+/state.json
+/state.json.tmp
+/gmb-poster.lock
+/config.toml
+# contenuti reali dei post: restano locali
+/posts/*/*
+!/posts/*/.gitkeep

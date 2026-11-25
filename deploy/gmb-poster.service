@@ -1,0 +1,11 @@
+[Unit]
+Description=Pubblica il post giornaliero su Google Business Profile
+After=graphical-session.target network-online.target
+
+[Service]
+Type=oneshot
+WorkingDirectory=%h/projects/gmb-auto-poster
+ExecStart=%h/projects/gmb-auto-poster/target/release/gmb-poster post
+Environment=DISPLAY=:0
+Environment=RUST_LOG=info
+TimeoutStartSec=15min

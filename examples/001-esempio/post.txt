@@ -1,0 +1,2 @@
+Questo è un post di esempio.
+Copia questa cartella in posts/queue/ e aggiungi una sola immagine (.jpg o .png).

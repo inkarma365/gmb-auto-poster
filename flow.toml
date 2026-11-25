@@ -1,0 +1,66 @@
+# Flusso UI per pubblicare un aggiornamento sulla scheda.
+# Gli elementi si trovano per testo visibile, aria-label, placeholder o title (IT + EN),
+# in tutti i frame. Se Google cambia l'interfaccia, correggi qui senza ricompilare.
+# Per provare un selettore: gmb-poster probe -t "Aggiungi aggiornamento"
+#
+# Azioni: goto | click | type | upload | wait | wait_gone | pause | screenshot
+# Campi target: texts = [...], css = "...", exact = true/false, frame_url = "...", allow_hidden = true
+# Altri campi: value (per type/goto, default "{text}" / "{business_url}"), ms = [min, max] per pause,
+#               timeout_s, optional = true, publish = true (il dry-run si ferma qui)
+
+[session]
+logged_out_url = ["accounts.google.com", "/signin", "ServiceLogin"]
+# Elemento visibile solo da loggati sul pannello della scheda
+logged_in = { texts = ["Aggiungi aggiornamento", "Add update", "Crea post", "Create post"] }
+
+[[step]]
+name = "Apri l'editor dell'aggiornamento"
+action = "click"
+texts = ["Aggiungi aggiornamento", "Add update", "Crea post", "Create post"]
+css = "button, a, [role=button], [role=link], [role=menuitem]"
+
+[[step]]
+name = "Scegli il tipo Aggiornamento"
+action = "click"
+texts = ["Aggiungi aggiornamento", "Add update"]
+css = "[role=menuitem], [role=option], [role=tab]"
+optional = true
+timeout_s = 6
+
+[[step]]
+name = "Scrivi il testo"
+action = "type"
+texts = ["Descrizione", "Description", "Aggiungi una descrizione", "Add a description"]
+css = "textarea, [contenteditable=true], [contenteditable=''], [role=textbox]"
+value = "{text}"
+
+[[step]]
+name = "Carica l'immagine"
+action = "upload"
+texts = ["Aggiungi foto", "Add photos", "Seleziona foto", "Select photos", "Aggiungi foto e video", "Carica"]
+
+[[step]]
+name = "Attendi l'elaborazione dell'immagine"
+action = "pause"
+ms = [5000, 9000]
+
+[[step]]
+name = "Pubblica"
+action = "click"
+texts = ["Pubblica", "Publish", "Post"]
+css = "button, [role=button]"
+exact = true
+publish = true
+
+[[step]]
+name = "Conferma chiusura editor"
+action = "wait_gone"
+texts = ["Pubblica", "Publish"]
+css = "button, [role=button]"
+exact = true
+timeout_s = 90
+
+[[step]]
+name = "Pausa finale"
+action = "pause"
+ms = [3000, 7000]
