@@ -33,7 +33,9 @@ pub enum Gate {
 impl State {
     pub fn load(path: &Path) -> Result<Self> {
         let mut st: State = match std::fs::read_to_string(path) {
-            Ok(raw) => serde_json::from_str(&raw).with_context(|| format!("parsing {}", path.display()))?,
+            Ok(raw) => {
+                serde_json::from_str(&raw).with_context(|| format!("parsing {}", path.display()))?
+            }
             Err(e) if e.kind() == std::io::ErrorKind::NotFound => State::default(),
             Err(e) => return Err(e.into()),
         };
@@ -61,12 +63,18 @@ impl State {
             return Gate::Skip(format!("già pubblicati {} post oggi", day.published.len()));
         }
         if day.attempts >= l.max_attempts_per_day {
-            return Gate::Skip(format!("raggiunto il limite di {} tentativi oggi", day.attempts));
+            return Gate::Skip(format!(
+                "raggiunto il limite di {} tentativi oggi",
+                day.attempts
+            ));
         }
         if let Some(last) = self.last_attempt {
             let wait = last + Duration::minutes(l.min_minutes_between_attempts) - Local::now();
             if wait > Duration::zero() {
-                return Gate::Skip(format!("ultimo tentativo troppo recente, riprova tra {} min", wait.num_minutes() + 1));
+                return Gate::Skip(format!(
+                    "ultimo tentativo troppo recente, riprova tra {} min",
+                    wait.num_minutes() + 1
+                ));
             }
         }
         Gate::Go

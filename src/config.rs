@@ -118,9 +118,11 @@ fn d_lang() -> String {
 
 impl Config {
     pub fn load(path: &Path) -> Result<Self> {
-        let raw = std::fs::read_to_string(path)
-            .with_context(|| format!("lettura di {} (copia config.toml.example)", path.display()))?;
-        let mut cfg: Config = toml::from_str(&raw).with_context(|| format!("parsing {}", path.display()))?;
+        let raw = std::fs::read_to_string(path).with_context(|| {
+            format!("lettura di {} (copia config.toml.example)", path.display())
+        })?;
+        let mut cfg: Config =
+            toml::from_str(&raw).with_context(|| format!("parsing {}", path.display()))?;
         let base = path
             .parent()
             .filter(|p| !p.as_os_str().is_empty())
@@ -141,7 +143,10 @@ impl Config {
     }
 
     pub fn base_dir(&self) -> PathBuf {
-        self.state_file.parent().map(Path::to_path_buf).unwrap_or_default()
+        self.state_file
+            .parent()
+            .map(Path::to_path_buf)
+            .unwrap_or_default()
     }
 }
 

@@ -17,7 +17,10 @@ use tracing::{error, info, warn};
 const EXIT_SESSION: u8 = 2;
 
 #[derive(Parser)]
-#[command(version, about = "Pubblica un post al giorno su Google Business Profile da una cartella")]
+#[command(
+    version,
+    about = "Pubblica un post al giorno su Google Business Profile da una cartella"
+)]
 struct Cli {
     #[arg(short, long, default_value = "config.toml", global = true)]
     config: PathBuf,
@@ -94,9 +97,25 @@ async fn run(cli: Cli) -> Result<ExitCode> {
         Cmd::Next => next(&cfg),
         Cmd::Login => login(&cfg).await,
         Cmd::Check => check(&cfg).await,
-        Cmd::Post { dry_run, force, keep_open } => post(&cfg, dry_run, force, keep_open).await,
-        Cmd::Probe { text, css, exact, allow_hidden, click } => {
-            let t = Target { texts: text, css, exact, frame_url: None, allow_hidden };
+        Cmd::Post {
+            dry_run,
+            force,
+            keep_open,
+        } => post(&cfg, dry_run, force, keep_open).await,
+        Cmd::Probe {
+            text,
+            css,
+            exact,
+            allow_hidden,
+            click,
+        } => {
+            let t = Target {
+                texts: text,
+                css,
+                exact,
+                frame_url: None,
+                allow_hidden,
+            };
             probe(&cfg, t, click).await
         }
     }
@@ -112,7 +131,13 @@ fn next(cfg: &Config) -> Result<ExitCode> {
         return Ok(ExitCode::SUCCESS);
     };
     let p = queue::load(&dir, &cfg.copy)?;
-    println!("Prossimo post: {}\nImmagine: {}\nCaratteri: {}\n---\n{}", p.id, p.image.display(), p.text.chars().count(), p.text);
+    println!(
+        "Prossimo post: {}\nImmagine: {}\nCaratteri: {}\n---\n{}",
+        p.id,
+        p.image.display(),
+        p.text.chars().count(),
+        p.text
+    );
     Ok(ExitCode::SUCCESS)
 }
 
@@ -205,7 +230,10 @@ async fn post(cfg: &Config, dry_run: bool, force: bool, keep_open: bool) -> Resu
         }
         Ok(Some(Outcome::DryRunStopped)) => {
             let shot = d.snapshot(&cfg.screenshots_dir, "dry-run").await;
-            println!("Dry-run completato. Screenshot: {}", shot.map(|p| p.display().to_string()).unwrap_or_default());
+            println!(
+                "Dry-run completato. Screenshot: {}",
+                shot.map(|p| p.display().to_string()).unwrap_or_default()
+            );
             ExitCode::SUCCESS
         }
         Ok(Some(Outcome::Published)) => {

@@ -1,15 +1,18 @@
 //! Avvio di Chromium con profilo persistente e azioni "umane" (mouse, tastiera, attese casuali).
 
 use crate::config::{Config, Human};
-use anyhow::{anyhow, bail, Context, Result};
+use anyhow::{Context, Result, anyhow, bail};
 use chromiumoxide::cdp::browser_protocol::dom::{GetContentQuadsParams, SetFileInputFilesParams};
 use chromiumoxide::cdp::browser_protocol::input::{
-    DispatchKeyEventParams, DispatchKeyEventType, DispatchMouseEventParams, DispatchMouseEventType, MouseButton,
+    DispatchKeyEventParams, DispatchKeyEventType, DispatchMouseEventParams, DispatchMouseEventType,
+    MouseButton,
 };
 use chromiumoxide::cdp::browser_protocol::page::{
     CreateIsolatedWorldParams, EventFileChooserOpened, SetInterceptFileChooserDialogParams,
 };
-use chromiumoxide::cdp::js_protocol::runtime::{CallFunctionOnParams, EvaluateParams, RemoteObjectId};
+use chromiumoxide::cdp::js_protocol::runtime::{
+    CallFunctionOnParams, EvaluateParams, RemoteObjectId,
+};
 use chromiumoxide::page::ScreenshotParams;
 use chromiumoxide::{Browser, BrowserConfig, Page};
 use futures::StreamExt;
@@ -62,8 +65,14 @@ pub async fn launch(cfg: &Config, headed: bool) -> Result<Session> {
             "disable-renderer-backgrounding",
             "disable-background-timer-throttling",
         ]);
-    b = if headed || !cfg.headless { b.with_head() } else { b.new_headless_mode() };
-    let conf = b.build().map_err(|e| anyhow!("configurazione browser: {e}"))?;
+    b = if headed || !cfg.headless {
+        b.with_head()
+    } else {
+        b.new_headless_mode()
+    };
+    let conf = b
+        .build()
+        .map_err(|e| anyhow!("configurazione browser: {e}"))?;
 
     let (browser, mut handler) = Browser::launch(conf).await.context("avvio di Chromium")?;
     let handler = tokio::spawn(async move {
@@ -73,7 +82,10 @@ pub async fn launch(cfg: &Config, headed: bool) -> Result<Session> {
             }
         }
     });
-    let page = browser.new_page("about:blank").await.context("apertura tab")?;
+    let page = browser
+        .new_page("about:blank")
+        .await
+        .context("apertura tab")?;
     // Chiude eventuali tab ripristinate dalla sessione precedente.
     if let Ok(pages) = browser.pages().await {
         for p in pages {
@@ -82,7 +94,11 @@ pub async fn launch(cfg: &Config, headed: bool) -> Result<Session> {
             }
         }
     }
-    Ok(Session { browser, page, handler })
+    Ok(Session {
+        browser,
+        page,
+        handler,
+    })
 }
 
 impl Session {
@@ -177,7 +193,8 @@ const SCROLL_JS: &str = r#"function() {
   if (r.top < 0 || r.left < 0 || r.bottom > innerHeight || r.right > innerWidth) this.scrollIntoView({block: 'center', inline: 'center'});
 }"#;
 
-const IS_FILE_INPUT_JS: &str = "function() { return this.tagName === 'INPUT' && this.type === 'file'; }";
+const IS_FILE_INPUT_JS: &str =
+    "function() { return this.tagName === 'INPUT' && this.type === 'file'; }";
 
 pub fn rand_ms([a, b]: [u64; 2]) -> Duration {
     Duration::from_millis(if b > a { rand::random_range(a..=b) } else { a })
@@ -197,12 +214,19 @@ impl<'a> Driver<'a> {
     pub fn new(page: &'a Page, human: &'a Human, window: [u32; 2]) -> Self {
         let x = rand::random_range(100.0..(window[0] as f64 / 2.0));
         let y = rand::random_range(100.0..(window[1] as f64 / 2.0));
-        Self { page, human, mouse: (x, y) }
+        Self {
+            page,
+            human,
+            mouse: (x, y),
+        }
     }
 
     pub async fn goto(&self, url: &str) -> Result<()> {
         info!("apro {url}");
-        self.page.goto(url).await.with_context(|| format!("navigazione verso {url}"))?;
+        self.page
+            .goto(url)
+            .await
+            .with_context(|| format!("navigazione verso {url}"))?;
         pause(self.human.page_settle_ms).await;
         Ok(())
     }
@@ -226,21 +250,35 @@ impl<'a> Driver<'a> {
     pub async fn find(&self, t: &Target) -> Result<Option<Found>> {
         let spec = serde_json::to_string(t)?;
         for frame in self.page.frames().await? {
-            let furl = self.page.frame_url(frame.clone()).await.ok().flatten().unwrap_or_default();
+            let furl = self
+                .page
+                .frame_url(frame.clone())
+                .await
+                .ok()
+                .flatten()
+                .unwrap_or_default();
             if t.frame_url.as_deref().is_some_and(|f| !furl.contains(f)) {
                 continue;
             }
-            let Ok(params) = CreateIsolatedWorldParams::builder().frame_id(frame.clone()).world_name("w").build() else {
+            let Ok(params) = CreateIsolatedWorldParams::builder()
+                .frame_id(frame.clone())
+                .world_name("w")
+                .build()
+            else {
                 continue;
             };
-            let Ok(world) = self.page.execute(params).await else { continue };
+            let Ok(world) = self.page.execute(params).await else {
+                continue;
+            };
             let ev = EvaluateParams::builder()
                 .expression(format!("({FIND_JS})({spec})"))
                 .context_id(world.result.execution_context_id)
                 .return_by_value(false)
                 .build()
                 .map_err(|e| anyhow!(e))?;
-            let Ok(res) = self.page.execute(ev).await else { continue };
+            let Ok(res) = self.page.execute(ev).await else {
+                continue;
+            };
             if let Some(oid) = res.result.result.object_id.clone() {
                 let desc = self
                     .call(&oid, DESCRIBE_JS)
@@ -249,7 +287,11 @@ impl<'a> Driver<'a> {
                     .flatten()
                     .and_then(|v| v.as_str().map(String::from))
                     .unwrap_or_default();
-                return Ok(Some(Found { object_id: oid, frame_url: furl, desc }));
+                return Ok(Some(Found {
+                    object_id: oid,
+                    frame_url: furl,
+                    desc,
+                }));
             }
         }
         Ok(None)
@@ -274,7 +316,11 @@ impl<'a> Driver<'a> {
         let deadline = tokio::time::Instant::now() + timeout;
         while self.find(t).await?.is_some() {
             if tokio::time::Instant::now() >= deadline {
-                bail!("l'elemento è ancora presente dopo {}s: {:?}", timeout.as_secs(), t);
+                bail!(
+                    "l'elemento è ancora presente dopo {}s: {:?}",
+                    timeout.as_secs(),
+                    t
+                );
             }
             pause([400, 900]).await;
         }
@@ -287,29 +333,58 @@ impl<'a> Driver<'a> {
         pause([250, 600]).await;
         let q = self
             .page
-            .execute(GetContentQuadsParams::builder().object_id(oid.clone()).build())
+            .execute(
+                GetContentQuadsParams::builder()
+                    .object_id(oid.clone())
+                    .build(),
+            )
             .await
             .context("posizione dell'elemento")?;
-        let quad = q.result.quads.first().context("elemento senza area cliccabile")?;
+        let quad = q
+            .result
+            .quads
+            .first()
+            .context("elemento senza area cliccabile")?;
         let v = quad.inner();
         let xs = [v[0], v[2], v[4], v[6]];
         let ys = [v[1], v[3], v[5], v[7]];
-        let (minx, maxx) = (xs.iter().cloned().fold(f64::MAX, f64::min), xs.iter().cloned().fold(f64::MIN, f64::max));
-        let (miny, maxy) = (ys.iter().cloned().fold(f64::MAX, f64::min), ys.iter().cloned().fold(f64::MIN, f64::max));
+        let (minx, maxx) = (
+            xs.iter().cloned().fold(f64::MAX, f64::min),
+            xs.iter().cloned().fold(f64::MIN, f64::max),
+        );
+        let (miny, maxy) = (
+            ys.iter().cloned().fold(f64::MAX, f64::min),
+            ys.iter().cloned().fold(f64::MIN, f64::max),
+        );
         let (cx, cy) = ((minx + maxx) / 2.0, (miny + maxy) / 2.0);
         let jx = (maxx - minx) * 0.2;
         let jy = (maxy - miny) * 0.2;
-        let x = cx + if jx > 0.5 { rand::random_range(-jx..jx) } else { 0.0 };
-        let y = cy + if jy > 0.5 { rand::random_range(-jy..jy) } else { 0.0 };
+        let x = cx
+            + if jx > 0.5 {
+                rand::random_range(-jx..jx)
+            } else {
+                0.0
+            };
+        let y = cy
+            + if jy > 0.5 {
+                rand::random_range(-jy..jy)
+            } else {
+                0.0
+            };
         Ok((x, y))
     }
 
     async fn mouse(&self, kind: DispatchMouseEventType, x: f64, y: f64) -> Result<()> {
-        let mut b = DispatchMouseEventParams::builder().r#type(kind.clone()).x(x).y(y);
+        let mut b = DispatchMouseEventParams::builder()
+            .r#type(kind.clone())
+            .x(x)
+            .y(y);
         if kind != DispatchMouseEventType::MouseMoved {
             b = b.button(MouseButton::Left).click_count(1);
         }
-        self.page.execute(b.build().map_err(|e| anyhow!(e))?).await?;
+        self.page
+            .execute(b.build().map_err(|e| anyhow!(e))?)
+            .await?;
         Ok(())
     }
 
@@ -319,13 +394,17 @@ impl<'a> Driver<'a> {
         let dist = ((x - sx).powi(2) + (y - sy).powi(2)).sqrt();
         let steps = (dist / 25.0).clamp(8.0, 40.0) as usize + rand::random_range(0..6usize);
         let off = (dist * 0.25).max(5.0);
-        let (cx, cy) = ((sx + x) / 2.0 + rand::random_range(-off..off), (sy + y) / 2.0 + rand::random_range(-off..off));
+        let (cx, cy) = (
+            (sx + x) / 2.0 + rand::random_range(-off..off),
+            (sy + y) / 2.0 + rand::random_range(-off..off),
+        );
         for i in 1..=steps {
             let t = i as f64 / steps as f64;
             let t = t * t * (3.0 - 2.0 * t); // ease-in-out
             let px = (1.0 - t).powi(2) * sx + 2.0 * (1.0 - t) * t * cx + t * t * x;
             let py = (1.0 - t).powi(2) * sy + 2.0 * (1.0 - t) * t * cy + t * t * y;
-            self.mouse(DispatchMouseEventType::MouseMoved, px, py).await?;
+            self.mouse(DispatchMouseEventType::MouseMoved, px, py)
+                .await?;
             pause([6, 22]).await;
         }
         self.mouse = (x, y);
@@ -337,21 +416,34 @@ impl<'a> Driver<'a> {
         let (x, y) = self.click_point(&f.object_id).await?;
         self.move_to(x, y).await?;
         pause([80, 260]).await;
-        self.mouse(DispatchMouseEventType::MousePressed, x, y).await?;
+        self.mouse(DispatchMouseEventType::MousePressed, x, y)
+            .await?;
         pause([55, 140]).await;
-        self.mouse(DispatchMouseEventType::MouseReleased, x, y).await?;
+        self.mouse(DispatchMouseEventType::MouseReleased, x, y)
+            .await?;
         Ok(())
     }
 
-    async fn key(&self, kind: DispatchKeyEventType, key: &str, text: Option<&str>, code: Option<(&str, i64)>) -> Result<()> {
+    async fn key(
+        &self,
+        kind: DispatchKeyEventType,
+        key: &str,
+        text: Option<&str>,
+        code: Option<(&str, i64)>,
+    ) -> Result<()> {
         let mut b = DispatchKeyEventParams::builder().r#type(kind).key(key);
         if let Some(t) = text {
             b = b.text(t).unmodified_text(t);
         }
         if let Some((c, vk)) = code {
-            b = b.code(c).windows_virtual_key_code(vk).native_virtual_key_code(vk);
+            b = b
+                .code(c)
+                .windows_virtual_key_code(vk)
+                .native_virtual_key_code(vk);
         }
-        self.page.execute(b.build().map_err(|e| anyhow!(e))?).await?;
+        self.page
+            .execute(b.build().map_err(|e| anyhow!(e))?)
+            .await?;
         Ok(())
     }
 
@@ -361,11 +453,24 @@ impl<'a> Driver<'a> {
         let mut buf = [0u8; 4];
         for (i, ch) in text.chars().enumerate() {
             if ch == '\n' {
-                self.key(DispatchKeyEventType::KeyDown, "Enter", Some("\r"), Some(("Enter", 13))).await?;
-                self.key(DispatchKeyEventType::KeyUp, "Enter", None, Some(("Enter", 13))).await?;
+                self.key(
+                    DispatchKeyEventType::KeyDown,
+                    "Enter",
+                    Some("\r"),
+                    Some(("Enter", 13)),
+                )
+                .await?;
+                self.key(
+                    DispatchKeyEventType::KeyUp,
+                    "Enter",
+                    None,
+                    Some(("Enter", 13)),
+                )
+                .await?;
             } else {
                 let s = ch.encode_utf8(&mut buf);
-                self.key(DispatchKeyEventType::KeyDown, s, Some(s), None).await?;
+                self.key(DispatchKeyEventType::KeyDown, s, Some(s), None)
+                    .await?;
                 self.key(DispatchKeyEventType::KeyUp, s, None, None).await?;
             }
             let mut d = rand_ms(self.human.type_delay_ms);
@@ -384,7 +489,11 @@ impl<'a> Driver<'a> {
     /// intercettando il selettore file che si apre cliccando il pulsante.
     pub async fn upload(&mut self, f: &Found, file: &Path) -> Result<()> {
         let path = file.to_string_lossy().to_string();
-        let is_input = self.call(&f.object_id, IS_FILE_INPUT_JS).await?.and_then(|v| v.as_bool()).unwrap_or(false);
+        let is_input = self
+            .call(&f.object_id, IS_FILE_INPUT_JS)
+            .await?
+            .and_then(|v| v.as_bool())
+            .unwrap_or(false);
         if is_input {
             info!("carico {path} nell'input file");
             let p = SetFileInputFilesParams::builder()
@@ -395,7 +504,9 @@ impl<'a> Driver<'a> {
             self.page.execute(p).await?;
             return Ok(());
         }
-        self.page.execute(SetInterceptFileChooserDialogParams::new(true)).await?;
+        self.page
+            .execute(SetInterceptFileChooserDialogParams::new(true))
+            .await?;
         let mut events = self.page.event_listener::<EventFileChooserOpened>().await?;
         let res = async {
             self.click(f).await?;
@@ -414,14 +525,22 @@ impl<'a> Driver<'a> {
             anyhow::Ok(())
         }
         .await;
-        if let Err(e) = self.page.execute(SetInterceptFileChooserDialogParams::new(false)).await {
+        if let Err(e) = self
+            .page
+            .execute(SetInterceptFileChooserDialogParams::new(false))
+            .await
+        {
             warn!("disattivazione intercettazione file chooser: {e}");
         }
         res
     }
 
     pub async fn highlight(&self, f: &Found) -> Result<()> {
-        self.call(&f.object_id, "function(){ this.style.outline = '3px solid #e11'; }").await?;
+        self.call(
+            &f.object_id,
+            "function(){ this.style.outline = '3px solid #e11'; }",
+        )
+        .await?;
         Ok(())
     }
 
@@ -430,7 +549,11 @@ impl<'a> Driver<'a> {
         std::fs::create_dir_all(dir).ok()?;
         let stamp = chrono::Local::now().format("%Y%m%d-%H%M%S");
         let png = dir.join(format!("{stamp}-{label}.png"));
-        if let Err(e) = self.page.save_screenshot(ScreenshotParams::builder().build(), &png).await {
+        if let Err(e) = self
+            .page
+            .save_screenshot(ScreenshotParams::builder().build(), &png)
+            .await
+        {
             warn!("screenshot non riuscito: {e}");
         }
         if let Ok(html) = self.page.content().await {

@@ -1,9 +1,9 @@
 //! Flusso UI di Google Business Profile, descritto in flow.toml.
 
-use crate::browser::{pause, Driver, Target};
+use crate::browser::{Driver, Target, pause};
 use crate::config::Config;
 use crate::queue::Post;
-use anyhow::{bail, Context, Result};
+use anyhow::{Context, Result, bail};
 use serde::Deserialize;
 use std::path::Path;
 use std::time::Duration;
@@ -28,12 +28,19 @@ pub struct SessionCheck {
 
 impl Default for SessionCheck {
     fn default() -> Self {
-        Self { logged_out_url: d_logged_out(), logged_in: None }
+        Self {
+            logged_out_url: d_logged_out(),
+            logged_in: None,
+        }
     }
 }
 
 fn d_logged_out() -> Vec<String> {
-    vec!["accounts.google.com".into(), "/signin".into(), "ServiceLogin".into()]
+    vec![
+        "accounts.google.com".into(),
+        "/signin".into(),
+        "ServiceLogin".into(),
+    ]
 }
 
 #[derive(Debug, Clone, Copy, Deserialize, PartialEq)]
@@ -75,13 +82,18 @@ pub enum Outcome {
 
 impl Flow {
     pub fn load(path: &Path) -> Result<Self> {
-        let raw = std::fs::read_to_string(path).with_context(|| format!("lettura di {}", path.display()))?;
-        let flow: Flow = toml::from_str(&raw).with_context(|| format!("parsing {}", path.display()))?;
+        let raw = std::fs::read_to_string(path)
+            .with_context(|| format!("lettura di {}", path.display()))?;
+        let flow: Flow =
+            toml::from_str(&raw).with_context(|| format!("parsing {}", path.display()))?;
         if flow.steps.is_empty() {
             bail!("{}: nessuno [[step]] definito", path.display());
         }
         if !flow.steps.iter().any(|s| s.publish) {
-            bail!("{}: nessuno step con publish = true (serve per --dry-run)", path.display());
+            bail!(
+                "{}: nessuno step con publish = true (serve per --dry-run)",
+                path.display()
+            );
         }
         Ok(flow)
     }
@@ -94,7 +106,12 @@ pub async fn open_and_check(d: &Driver<'_>, cfg: &Config, flow: &Flow) -> Result
     }
     d.goto(&cfg.business_url).await?;
     let url = d.url().await;
-    if flow.session.logged_out_url.iter().any(|p| url.contains(p.as_str())) {
+    if flow
+        .session
+        .logged_out_url
+        .iter()
+        .any(|p| url.contains(p.as_str()))
+    {
         warn!("sessione scaduta: reindirizzato a {url}");
         return Ok(false);
     }
@@ -114,7 +131,13 @@ fn subst(s: &str, cfg: &Config, post: &Post) -> String {
         .replace("{business_url}", &cfg.business_url)
 }
 
-pub async fn run(d: &mut Driver<'_>, cfg: &Config, flow: &Flow, post: &Post, dry_run: bool) -> Result<Outcome> {
+pub async fn run(
+    d: &mut Driver<'_>,
+    cfg: &Config,
+    flow: &Flow,
+    post: &Post,
+    dry_run: bool,
+) -> Result<Outcome> {
     let n = flow.steps.len();
     for (i, step) in flow.steps.iter().enumerate() {
         if step.publish && dry_run {
@@ -151,7 +174,8 @@ async fn run_step(d: &mut Driver<'_>, cfg: &Config, step: &Step, post: &Post) ->
                 d.click(&f).await?;
                 pause([300, 900]).await;
             }
-            d.type_text(&subst(step.value.as_deref().unwrap_or("{text}"), cfg, post)).await
+            d.type_text(&subst(step.value.as_deref().unwrap_or("{text}"), cfg, post))
+                .await
         }
         Action::Upload => {
             let f = d.wait_for(&step.target, timeout).await?;
@@ -164,7 +188,8 @@ async fn run_step(d: &mut Driver<'_>, cfg: &Config, step: &Step, post: &Post) ->
             Ok(())
         }
         Action::Screenshot => {
-            d.snapshot(&cfg.screenshots_dir, &step.name.replace(' ', "_")).await;
+            d.snapshot(&cfg.screenshots_dir, &step.name.replace(' ', "_"))
+                .await;
             Ok(())
         }
     }

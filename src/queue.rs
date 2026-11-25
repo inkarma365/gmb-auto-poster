@@ -1,5 +1,5 @@
 use crate::config::Copy;
-use anyhow::{bail, Context, Result};
+use anyhow::{Context, Result, bail};
 use std::path::{Path, PathBuf};
 
 pub const MAX_TEXT_CHARS: usize = 1500;
@@ -35,11 +35,17 @@ pub fn next_dir(posts: &Path) -> Result<Option<PathBuf>> {
 }
 
 fn is_hidden(p: &Path) -> bool {
-    p.file_name().and_then(|n| n.to_str()).is_some_and(|n| n.starts_with('.'))
+    p.file_name()
+        .and_then(|n| n.to_str())
+        .is_some_and(|n| n.starts_with('.'))
 }
 
 pub fn load(dir: &Path, copy: &Copy) -> Result<Post> {
-    let id = dir.file_name().and_then(|n| n.to_str()).context("nome cartella non valido")?.to_string();
+    let id = dir
+        .file_name()
+        .and_then(|n| n.to_str())
+        .context("nome cartella non valido")?
+        .to_string();
 
     let body = TEXT_FILES
         .iter()
@@ -53,7 +59,12 @@ pub fn load(dir: &Path, copy: &Copy) -> Result<Post> {
     let Some(body) = body else {
         bail!("{id}: manca post.txt e non c'è copy.default_text in config");
     };
-    let text = match copy.footer.as_deref().map(str::trim).filter(|f| !f.is_empty()) {
+    let text = match copy
+        .footer
+        .as_deref()
+        .map(str::trim)
+        .filter(|f| !f.is_empty())
+    {
         Some(f) => format!("{body}\n\n{f}"),
         None => body,
     };
@@ -80,19 +91,34 @@ pub fn load(dir: &Path, copy: &Copy) -> Result<Post> {
     };
     let bytes = std::fs::metadata(&image)?.len();
     if !(MIN_IMAGE_BYTES..=MAX_IMAGE_BYTES).contains(&bytes) {
-        bail!("{id}: immagine di {} KB, deve stare tra 10 KB e 5 MB", bytes / 1024);
+        bail!(
+            "{id}: immagine di {} KB, deve stare tra 10 KB e 5 MB",
+            bytes / 1024
+        );
     }
     let sz = imagesize::size(&image).with_context(|| format!("{id}: immagine non leggibile"))?;
     if sz.width < MIN_IMAGE_SIDE || sz.height < MIN_IMAGE_SIDE {
-        bail!("{id}: immagine {}x{}, minimo {MIN_IMAGE_SIDE}x{MIN_IMAGE_SIDE}", sz.width, sz.height);
+        bail!(
+            "{id}: immagine {}x{}, minimo {MIN_IMAGE_SIDE}x{MIN_IMAGE_SIDE}",
+            sz.width,
+            sz.height
+        );
     }
     let image = image.canonicalize()?;
-    Ok(Post { id, dir: dir.to_path_buf(), text, image })
+    Ok(Post {
+        id,
+        dir: dir.to_path_buf(),
+        text,
+        image,
+    })
 }
 
 /// Sposta la cartella del post in posts/<dest>/<data>-<id> e restituisce il nuovo percorso.
 pub fn archive(posts: &Path, dir: &Path, dest: &str) -> Result<PathBuf> {
-    let name = dir.file_name().context("cartella senza nome")?.to_string_lossy();
+    let name = dir
+        .file_name()
+        .context("cartella senza nome")?
+        .to_string_lossy();
     let stamp = chrono::Local::now().format("%Y-%m-%d");
     let target_dir = posts.join(dest);
     std::fs::create_dir_all(&target_dir)?;
