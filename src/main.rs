@@ -88,6 +88,8 @@ async fn main() -> ExitCode {
 fn notify(msg: &str) {
     let _ = std::process::Command::new("notify-send")
         .args(["--app-name=gmb-poster", "Google Business Poster", msg])
+        .stdout(std::process::Stdio::null())
+        .stderr(std::process::Stdio::null())
         .status();
 }
 
