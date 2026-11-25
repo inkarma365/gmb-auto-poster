@@ -47,6 +47,8 @@ jobs:
         run: |
           ./target/release/gmb-poster --help
           ./target/release/gmb-poster -c config.toml.example next
+      - name: E2E (pagina finta, Chrome headless)
+        run: tests/e2e/run.sh target/release/gmb-poster "$(command -v google-chrome || command -v chromium)"
       - uses: actions/upload-artifact@v4
         with:
           name: gmb-poster-linux-x86_64

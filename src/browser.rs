@@ -65,6 +65,9 @@ pub async fn launch(cfg: &Config, headed: bool) -> Result<Session> {
             "disable-renderer-backgrounding",
             "disable-background-timer-throttling",
         ]);
+    if cfg.no_sandbox {
+        b = b.no_sandbox();
+    }
     b = if headed || !cfg.headless {
         b.with_head()
     } else {

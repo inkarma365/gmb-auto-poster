@@ -1,0 +1,36 @@
+<!doctype html><html lang="it"><head><meta charset="utf-8"><title>Finta scheda</title></head>
+<body style="font-family:sans-serif;padding:40px">
+<h1>La tua attività</h1>
+<div id="log"></div>
+<button id="add" onclick="openDialog()">Aggiungi aggiornamento</button>
+<script>
+window.__events = [];
+const log = m => { document.getElementById('log').insertAdjacentHTML('beforeend', '<p>'+m+'</p>'); };
+document.addEventListener('mousemove', () => window.__moves = (window.__moves||0)+1);
+function openDialog() {
+  const f = document.createElement('iframe');
+  f.id = 'dlg'; f.style = 'width:700px;height:420px;border:2px solid #333;display:block;margin-top:20px';
+  f.srcdoc = `<!doctype html><meta charset="utf-8"><body style="font-family:sans-serif">
+    <textarea aria-label="Descrizione" rows="6" cols="60"></textarea><br>
+    <input type="file" id="file" style="display:none" accept="image/*">
+    <button onclick="document.getElementById('file').click()">Aggiungi foto</button>
+    <span id="preview"></span><br><br>
+    <button id="pub" onclick="publish()">Pubblica</button>
+    <script>
+      document.getElementById('file').addEventListener('change', e => {
+        document.getElementById('preview').textContent = 'anteprima: ' + e.target.files[0].name + ' ' + e.target.files[0].size + ' byte';
+      });
+      function publish() {
+        const t = document.querySelector('textarea').value;
+        const f = document.getElementById('file').files[0];
+        parent.postMessage({text: t, file: f ? f.name : null, trusted: event.isTrusted}, '*');
+      }
+    <\/script>`;
+  document.body.appendChild(f);
+}
+window.addEventListener('message', e => {
+  window.__published = e.data;
+  log('PUBBLICATO: file=' + e.data.file + ' trusted=' + e.data.trusted + ' testo=' + JSON.stringify(e.data.text) + ' mousemove=' + window.__moves + ' webdriver=' + navigator.webdriver);
+  setTimeout(() => document.getElementById('dlg').remove(), 800);
+});
+</script></body></html>

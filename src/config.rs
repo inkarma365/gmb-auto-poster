@@ -25,6 +25,9 @@ pub struct Config {
     /// Sconsigliato: Chromium headless è il segnale di automazione più facile da riconoscere.
     #[serde(default)]
     pub headless: bool,
+    /// Solo per CI/container: disattiva la sandbox di Chromium.
+    #[serde(default)]
+    pub no_sandbox: bool,
     #[serde(default = "d_window")]
     pub window: [u32; 2],
     #[serde(default = "d_lang")]
