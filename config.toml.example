@@ -5,7 +5,7 @@
 # e incolla qui l'URL.
 business_url = "https://business.google.com/locations"
 
-# Pagina aperta prima della scheda, come farebbe una persona (commenta per saltarla).
+# Pagina aperta prima della scheda, come farebbe una persona ("" per saltarla).
 warmup_url = "https://www.google.com/"
 
 chromium_path = "/usr/bin/chromium"

@@ -101,7 +101,7 @@ impl Flow {
 
 /// Apre la scheda (passando prima dalla home di Google) e verifica di essere loggati.
 pub async fn open_and_check(d: &Driver<'_>, cfg: &Config, flow: &Flow) -> Result<bool> {
-    if let Some(w) = &cfg.warmup_url {
+    if let Some(w) = cfg.warmup_url.as_deref().filter(|w| !w.is_empty()) {
         d.goto(w).await?;
     }
     d.goto(&cfg.business_url).await?;
@@ -121,7 +121,13 @@ pub async fn open_and_check(d: &Driver<'_>, cfg: &Config, flow: &Flow) -> Result
         warn!("sessione: elemento di controllo non trovato su {url}");
         return Ok(false);
     }
-    info!("sessione valida ({url})");
+    let webdriver = d
+        .page
+        .evaluate("navigator.webdriver")
+        .await
+        .ok()
+        .and_then(|r| r.value().cloned());
+    info!("sessione valida ({url}), navigator.webdriver = {webdriver:?}");
     Ok(true)
 }
 
